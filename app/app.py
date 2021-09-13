@@ -1,15 +1,23 @@
 import time
 import os
+import socket
 import redis
-from flask import Flask, request, jsonify
-from flask_mongoengine import MongoEngine
+from flask import Flask, request, jsonify, render_template, send_file
+from flask_mongoengine import *
+from flask_apscheduler import APScheduler
 import urllib 
 import json
 import influxdb_client
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
+from flask_socketio import SocketIO, emit, disconnect
+from IPython.display import Image
+
 
 app = Flask(__name__)
+
+app.config['SECRET_KEY'] = 'secret!'
+socketio = SocketIO(app)
 
 cache = redis.Redis(host='redis', port=6379)
 
@@ -51,16 +59,19 @@ def get_hit_count():
             time.sleep(0.5)
 
 
-class go_device(db.Document):
+class db_device(db.Document):
     device_id = db.StringField()    
     name = db.StringField()
     sleep_time = db.StringField()
+    age = db.StringField()  
+    image = db.ImageField(thumbnail_size=(150,150))
     def to_json(self):
         return {"device_id": self.device_id,
                 "name": self.name,
                 "sleep_time": self.sleep_time}       
 
-        
+
+
 @app.route('/')
 def hello():
     p = Point("my_measurement").tag("location", "Prague").field("temperature", 25.3)
@@ -69,33 +80,100 @@ def hello():
     count = get_hit_count()
     return 'Hello World Jochen3! I have been seen {} times.\n'.format(count)
 
+@app.route('/l')
+def launchpad():
+    return render_template("index.html", title = 'Projects' , async_mode=socketio.async_mode)
+
 
 @app.route('/device', methods=['GET'])
 def query_records():
     name = request.args.get('name')
-    lo_device = go_device.objects(name=name).first()
+    lo_device = db_device.objects(name=name).first()
     if not lo_device:
         return jsonify({'error': 'data not found'})
     else:
         return jsonify(lo_device.to_json())
 
 
+@app.route('/image', methods=['GET'])
+def display_image():
+    name = request.args.get('name')
+    lo_device = db_device.objects(name=name).first()
+    if not lo_device:
+        return jsonify({'error': 'data not found'})
+    else:
+        photo = lo_device.image.read()
+        content_type = lo_device.image.content_type
+        return send_file(photo, as_attachment=True, attachment_filename='myfile.jpg')
+
+
 @app.route('/add', methods=['POST'])
 def add_records(): 
     body = request.get_json()
-    lo_device = go_device(**body).save()
 
-    lo_device = go_device.objects()
+    lo_device = db_device(**body).save
+    
+     # Push data to  client
+    out = db_device.objects().to_json()
+    socketio.emit('Devices',  {'DeviceList': out }, broadcast=True)
+    
+    lo_device = db_device.objects()
     return  jsonify(lo_device), 200
+
+
+@app.route('/update', methods=['PUT'])
+def update_records(): 
+    body = request.get_json()
+
+    name = 'Flo'    
+    lo_device = db_device.objects(name=name).first()
+    if lo_device:     
+        lo_device.age = '190'
+        lo_device.sleep_time = '50'    
+
+        image_bytes = open("Foto.jpg", "rb")
+        lo_device.image.replace(image_bytes, content_type='image/jpg', filename='test123.jpg')
+        lo_device.save()
+        Image(lo_device.image.thumbnail.read())
+
+
+     # Push data to  client
+    out = db_device.objects().to_json()
+    socketio.emit('Devices',  {'DeviceList': out }, broadcast=True)
+    
+    lo_device = db_device.objects()
+    return  jsonify(lo_device), 200   
+
+@app.route('/b', methods=['GET'])
+def breadcast_records(): 
+    body = request.get_json()
+
+     # Push data to  client
+    out = db_device.objects().to_json()
+    socketio.emit('Devices',  {'DeviceList': out }, broadcast=True)
+    
+    lo_device = db_device.objects()
+    return  jsonify(lo_device), 200   
 
 
 @app.route('/device_list')
 def  get_movies():
-    lo_device = go_device.objects()
+    lo_device = db_device.objects()
     return jsonify(lo_device), 200
+
+
+@socketio.on('connected')
+def onConnect(message):
+    print ("New Client connected :Session ID: " + str( request.sid ))
+
+    # Push data to  client
+    out = db_device.objects().to_json()
+    emit('Devices',  {'DeviceList': out })
 
 
 if __name__ == "__main__":
     ENVIRONMENT_DEBUG = os.environ.get("APP_DEBUG", True)
     ENVIRONMENT_PORT = os.environ.get("APP_PORT", 5000)
-    app.run(host='0.0.0.0', port=ENVIRONMENT_PORT, debug=ENVIRONMENT_DEBUG)
+
+    socketio.run(app, host='0.0.0.0', debug=True)
+    #app.run(host='0.0.0.0', port=ENVIRONMENT_PORT, debug=ENVIRONMENT_DEBUG)

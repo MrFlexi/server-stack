@@ -28,7 +28,7 @@ services:
     networks:
       - backend
     volumes:
-      - redisdata:/data/db 
+      - mydata:/data/db 
 
   mongodb:
     image: mongo:4.0.8
@@ -38,27 +38,23 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: mrflexi_root
       MONGO_INITDB_ROOT_PASSWORD: nc:13Arequipa
-      MONGO_INITDB_DATABASE: flaskdb
+      MONGO_INITDB_DATABASE: geonames
       MONGODB_DATA_DIR: /data/db
       MONDODB_LOG_DIR: /dev/null
     volumes:
-      - mongodbdata:/data/db
+     - mydata:/data/db     
     networks:
       - backend
-    expose:
-      - 27017
-
+    ports:
+      - 27017:27017
 
 volumes:
-  mongodbdata:
+  mydata:
     driver: local
-  redisdata:
-    driver: local
-  appdata:
-    driver: local
-  nginxdata:
-    driver: local
-
+    driver_opts:
+      o: bind
+      type: none
+      device: /home/pi/projects/storage    #hier werden die Daten persistent abgelegt
 networks:
   backend:
      driver: bridge

@@ -1,0 +1,45 @@
+{
+	"selectedKey": "root1",
+	"navigation": [
+		{
+			"title": "Lora Devices",
+			"icon": "sap-icon://employee",
+			"expanded": true,
+			"key": "root1",
+			"items": [
+				{
+					"title": "MrFlexi-01",
+					"key": "page1"
+				},
+				{
+					"title": "MrFlexi-02",
+					"key": "page2"
+				}
+			]
+		},
+		{
+			"title": "Grafana",
+			"icon": "sap-icon://building",
+			"key": "root2"
+		},
+		{
+			"title": "Netcup",
+			"icon": "sap-icon://card",
+			"expanded": false,
+			"items": [
+				{
+					"title": "Portainer"
+				},
+				{
+					"title": "Influx DB"
+				}				
+			]
+		}
+	],
+	"fixedNavigation": [
+		{
+			"title": "Fixed Item 1",
+			"icon": "sap-icon://employee"
+		}
+	]
+}
