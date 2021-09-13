@@ -1,0 +1,6 @@
+redis
+flask
+Flask-PyMongo
+flask-mongoengine
+wheel
+influxdb-client
