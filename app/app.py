@@ -5,19 +5,24 @@ import redis
 from flask import Flask, request, jsonify, render_template, send_file
 from flask_mongoengine import *
 from flask_apscheduler import APScheduler
+from flask_cors import CORS
+from PIL import Image
 import urllib 
 import json
 import influxdb_client
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 from flask_socketio import SocketIO, emit, disconnect
-from IPython.display import Image
+#import numpy as np
+#import cv2
+#from IPython.display import Image
 
 
 app = Flask(__name__)
+CORS(app)
 
 app.config['SECRET_KEY'] = 'secret!'
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 cache = redis.Redis(host='redis', port=6379)
 
@@ -100,16 +105,23 @@ def display_image():
     name = request.args.get('name')
     lo_device = db_device.objects(name=name).first()
     if not lo_device:
-        return jsonify({'error': 'data not found'})
+        return jsonify({'error': 'data not found' + name})
     else:
         photo = lo_device.image.read()
         content_type = lo_device.image.content_type
         return send_file(photo, as_attachment=True, attachment_filename='myfile.jpg')
 
+@app.route('/get_last_image', methods=['GET'])
+def serve_image():
+    #name = request.args.get('name')    
+    return send_file('./webcam/lastimage.jpg', as_attachment=True, attachment_filename='lastimage.jpg', mimetype='image/jpg')
 
-@app.route('/add', methods=['POST'])
+
+
+@app.route('/add2', methods=['POST'])
 def add_records(): 
     body = request.get_json()
+    print ("add: " + str(body))
 
     lo_device = db_device(**body).save
     
@@ -128,13 +140,13 @@ def update_records():
     name = 'Flo'    
     lo_device = db_device.objects(name=name).first()
     if lo_device:     
-        lo_device.age = '190'
+        lo_device.age = lo_device.age + 1
         lo_device.sleep_time = '50'    
 
         image_bytes = open("Foto.jpg", "rb")
         lo_device.image.replace(image_bytes, content_type='image/jpg', filename='test123.jpg')
         lo_device.save()
-        Image(lo_device.image.thumbnail.read())
+        #Image(lo_device.image.thumbnail.read())
 
 
      # Push data to  client
@@ -161,6 +173,46 @@ def  get_movies():
     lo_device = db_device.objects()
     return jsonify(lo_device), 200
 
+@app.route("/add", methods=["POST"])
+def process_image():
+    file = request.files['image']
+    payload = request.form.to_dict(flat=True)
+    file.save('./webcam/lastimage.jpg')
+
+    # Read the image via file.stream
+    img = Image.open(file.stream)
+    return jsonify({'msg': 'success', 
+                    'size': [img.width, img.height],
+                    'payload' : payload})
+
+@app.route('/upload', methods=['POST','GET'])
+def upload():
+    #import pdb; pdb.set_trace()
+    received = request
+    img = None
+    if received.files:
+        print(received.files['imageFile'])
+        # convert string of image data to uint8
+        file  = received.files['imageFile']
+        file.save('./webcam/lastimage.jpg')
+
+        #nparr = np.fromstring(file.read(), np.uint8)
+        # decode image
+        #img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        #save_img(img)
+        return "[SUCCESS] Image Received", 201
+    else:
+        return "[FAILED] Image Not Received", 204
+
+
+@socketio.on('test')
+def onTest(message):
+    print ("Ping received :Session ID: " + str( request.sid ))
+
+    # Push data to  client
+    out = db_device.objects().to_json()
+    emit('Devices',  {'DeviceList': out }) 
+
 
 @socketio.on('connected')
 def onConnect(message):
@@ -169,6 +221,7 @@ def onConnect(message):
     # Push data to  client
     out = db_device.objects().to_json()
     emit('Devices',  {'DeviceList': out })
+    emit('message',  'Hallo Welt')
 
 
 if __name__ == "__main__":

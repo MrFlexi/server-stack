@@ -1,11 +1,15 @@
 pillow==6.2.1
 redis
+eventlet
 flask
 Flask-PyMongo
 flask-mongoengine
 Flask-APScheduler
+flask-cors
 Werkzeug
 Flask-SocketIO
 wheel
 influxdb-client
 ipython
+debugpy
+

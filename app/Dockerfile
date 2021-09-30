@@ -18,4 +18,4 @@ RUN pip3 install -r requirements.txt --no-cache-dir
 
 EXPOSE 5000
 
-CMD ["python","app.py"]
+CMD ["python","-u","app.py"]
