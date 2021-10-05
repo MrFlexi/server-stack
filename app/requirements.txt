@@ -12,4 +12,5 @@ wheel
 influxdb-client
 ipython
 debugpy
+requests
 

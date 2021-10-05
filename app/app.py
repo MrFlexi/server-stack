@@ -2,7 +2,7 @@ import time
 import os
 import socket
 import redis
-from flask import Flask, request, jsonify, render_template, send_file
+from flask import Flask, request, jsonify, render_template, send_file, Response
 from flask_mongoengine import *
 from flask_apscheduler import APScheduler
 from flask_cors import CORS
@@ -13,6 +13,7 @@ import influxdb_client
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 from flask_socketio import SocketIO, emit, disconnect
+import requests
 #import numpy as np
 #import cv2
 #from IPython.display import Image
@@ -63,6 +64,32 @@ def get_hit_count():
             retries -= 1
             time.sleep(0.5)
 
+def sendImagetoYolo():
+    url = "http://yolo.szaroletta.de/detect"
+    data = {'Street':'Im Kieroth', 'test2':2}
+    filename = './webcam/lastimage.jpg'
+
+
+    my_img = {'image': open(filename, 'rb')}
+    result = requests.post(url, files=my_img)
+    print("HTTP result code from YOLO API call:")
+    #print(result.status_code)
+    #print(result.json())
+    return result.json()
+    
+
+
+def old_send():
+    with open(filename, 'w') as f:
+        url = "http://yolo.szaroletta.de/detect"
+        files = [
+                ('document', (filename, open(filename, 'rb'), 'application/octet')),
+                ('data', ('data', json.dumps(data), 'application/json'))
+                ]
+
+        r = requests.post(url, files=files)
+        print(r)
+
 
 class db_device(db.Document):
     device_id = db.StringField()    
@@ -112,11 +139,15 @@ def display_image():
         return send_file(photo, as_attachment=True, attachment_filename='myfile.jpg')
 
 @app.route('/get_last_image', methods=['GET'])
-def serve_image():
+def get_last_image():
     #name = request.args.get('name')    
     return send_file('./webcam/lastimage.jpg', as_attachment=True, attachment_filename='lastimage.jpg', mimetype='image/jpg')
 
 
+@app.route('/get_numer_of_cars')
+def get_numer_of_cars():
+    d = { "cars": "16", "people": 20 }
+    return (jsonify(d), 200)
 
 @app.route('/add2', methods=['POST'])
 def add_records(): 
@@ -185,23 +216,32 @@ def process_image():
                     'size': [img.width, img.height],
                     'payload' : payload})
 
-@app.route('/upload', methods=['POST','GET'])
-def upload():
-    #import pdb; pdb.set_trace()
+@app.route('/upload_and_detect', methods=['POST','GET'])
+def upload_and_detect():
+    print("Upload Image")
+    
     received = request
+    
+    print(received.files)
     img = None
     if received.files:
-        print(received.files['imageFile'])
+        print("Files received")
+        print(received.files['image'])
         # convert string of image data to uint8
-        file  = received.files['imageFile']
+        file  = received.files['image']
         file.save('./webcam/lastimage.jpg')
+        
+         # call detection API
+        result_json = sendImagetoYolo()
+        print('After detection API...')
+        print(result_json)
 
-        #nparr = np.fromstring(file.read(), np.uint8)
-        # decode image
-        #img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        #save_img(img)
-        return "[SUCCESS] Image Received", 201
+        url=result_json['url']    
+        print('URL last image:'+ url)             
+                
+        return jsonify(result_json)
     else:
+        print("No files found")
         return "[FAILED] Image Not Received", 204
 
 
