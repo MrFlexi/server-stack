@@ -17,7 +17,10 @@ import requests
 #import numpy as np
 #import cv2
 #from IPython.display import Image
+import geopy
+from geopy.geocoders import Nominatim
 
+GeoLocator = Nominatim
 
 app = Flask(__name__)
 CORS(app)
@@ -25,23 +28,13 @@ CORS(app)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-cache = redis.Redis(host='redis', port=6379)
-
-username = 'mrflexi'
-password = 'nc:13Arequipa'
-database = 'sensors'
-retention_policy = 'autogen'
-bucket = f'{database}/{retention_policy}'
-
-client = InfluxDBClient(url="http://localhost:8086", token=f'{username}:{password}', org="-")
-
-write_api = client.write_api(write_options=SYNCHRONOUS)
-query_api = client.query_api()
-
-
 #app.config["MONGODB_URI"] = 'mongodb://' + os.environ['MONGODB_USERNAME'] + ':' + os.environ['MONGODB_PASSWORD'] + '@' + os.environ['MONGODB_HOSTNAME'] + ':27017/' + os.environ['MONGODB_DATABASE']
 
 
+#-------------------------------------------------------------------------------------
+#   Mongo DB zeug
+#
+#-------------------------------------------------------------------------------------
 app.config['MONGODB_SETTINGS'] = {
     'db': 'admin',
     'host': 'mongodb',
@@ -50,8 +43,58 @@ app.config['MONGODB_SETTINGS'] = {
     'port': 27017,   
 }
 
-
 db = MongoEngine(app)
+
+# Mongo DB Object Relation Mapper
+class db_device(db.Document):
+    device_id = db.StringField()    
+    name = db.StringField()
+    sleep_time = db.StringField()
+    age = db.StringField()  
+    image = db.ImageField(thumbnail_size=(150,150))
+    def to_json(self):
+        return {"device_id": self.device_id,
+                "name": self.name,
+                "sleep_time": self.sleep_time} 
+
+
+#-------------------------------------------------------------------------------------
+#  Influx DB
+#
+#-------------------------------------------------------------------------------------
+
+username = 'admin'
+password = 'nc:13Arequipa'
+database = 'ttn'
+retention_policy = 'autogen'
+bucket = f'{database}/{retention_policy}'
+client = InfluxDBClient(url="http://influxdb:8086", token=f'{username}:{password}', org="-")
+
+write_api = client.write_api(write_options=SYNCHRONOUS)
+query_api = client.query_api()
+
+def get_influx():
+    print('*** InfluxDB Query Points ***')
+
+    query_api = client.query_api()
+    query = f'from(bucket: \"{bucket}\") |> range(start: -1h)'
+  
+    query2 = 'from(bucket:"ttn")' \
+        ' |> range(start: -1h, stop: now())' \
+        ' |> filter(fn: (r) => r._measurement == "value")' \
+        ' |> filter(fn: (r) => r._field == "battery_voltage")' \
+  
+    tables = query_api.query(query2)
+    print(tables)
+    #for record in tables[1].records:
+    #    print(f'#{record.get_time()} #{record.get_measurement()}: --> {record.get_field()} = {record.get_value()}')
+
+#-------------------------------------------------------------------------------------
+#  Redis DB
+#
+#-------------------------------------------------------------------------------------
+
+cache = redis.Redis(host='redis', port=6379)
 
 def get_hit_count():
     retries = 5
@@ -66,7 +109,7 @@ def get_hit_count():
 
 def sendImagetoYolo():
     url = "http://yolo.szaroletta.de/detect"
-    data = {'Street':'Im Kieroth', 'test2':2}
+    data = {'Street':'Street', 'test2':2}
     filename = './webcam/lastimage.jpg'
 
 
@@ -91,19 +134,12 @@ def old_send():
         print(r)
 
 
-class db_device(db.Document):
-    device_id = db.StringField()    
-    name = db.StringField()
-    sleep_time = db.StringField()
-    age = db.StringField()  
-    image = db.ImageField(thumbnail_size=(150,150))
-    def to_json(self):
-        return {"device_id": self.device_id,
-                "name": self.name,
-                "sleep_time": self.sleep_time}       
+      
 
 
-
+#-----------------------------------------------------------------------------------------
+# Flask Routes
+#-----------------------------------------------------------------------------------------
 @app.route('/')
 def hello():
     p = Point("my_measurement").tag("location", "Prague").field("temperature", 25.3)
@@ -218,11 +254,19 @@ def process_image():
 
 @app.route('/upload_and_detect', methods=['POST','GET'])
 def upload_and_detect():
-    print("Upload Image")
-    
+    print("Upload and detect image")
     received = request
-    
     print(received.files)
+    print(request.form)
+    print(request.form.get('data'))
+    latlon_dict = json.loads((request.form.get('data')))
+    print(latlon_dict)
+    if latlon_dict:
+        point = geopy.point.Point(latlon_dict['latitude'], latlon_dict['longitude'])
+        locator = Nominatim(user_agent="http")
+        location = locator.reverse(point)
+        print(location.address)
+
     img = None
     if received.files:
         print("Files received")
@@ -233,16 +277,50 @@ def upload_and_detect():
         
          # call detection API
         result_json = sendImagetoYolo()
+        
         print('After detection API...')
-        print(result_json)
+        typeVariable = type(result_json)
+        print('comparison',typeVariable == dict)
+        if typeVariable == dict:
+            print('is dict')
+        else:
+            print('no dict')
+
+        # DICT keys
+        for key, value in result_json.items():
+            print(key)
+
+        # Insert reverse geo location
+
+        newitem = [{ "latitude": 48.123456, "longitude": 11.123456,
+                    "road":"Im Kieroth 999", "city":"Wegberg", "country":"Germany"}]
+
+        result_json["geoLocation"] = location.raw
 
         url=result_json['url']    
         print('URL last image:'+ url)             
-                
+        print(result_json)       
         return jsonify(result_json)
     else:
         print("No files found")
         return "[FAILED] Image Not Received", 204
+
+@app.route('/reverseGeo', methods=['POST'])
+def reverseGeo():
+    print("Reverse geo location/n")
+    payload = request.get_json()
+    print(payload) 
+    if payload:
+        # Insert reverse geo location
+        result_json = []
+        newitem = [{ "latitude": 48.123456, "longitude": 11.123456,
+                    "road":"Im Kieroth", "city":"Wegberg", "country":"Germany"}]
+
+        result_json["geoLocation"] = newitem           
+        print(result_json)       
+        return jsonify(result_json)
+    else:
+        return "[FAILED] no Json payload found", 204
 
 
 @socketio.on('test')
@@ -267,6 +345,12 @@ def onConnect(message):
 if __name__ == "__main__":
     ENVIRONMENT_DEBUG = os.environ.get("APP_DEBUG", True)
     ENVIRONMENT_PORT = os.environ.get("APP_PORT", 5000)
+    get_influx()
+
+    point = geopy.point.Point(48.705293, 8.984022)
+    locator = Nominatim(user_agent="http")
+    location = locator.reverse(point)
+    print(location.address)
 
     socketio.run(app, host='0.0.0.0', debug=True)
     #app.run(host='0.0.0.0', port=ENVIRONMENT_PORT, debug=ENVIRONMENT_DEBUG)

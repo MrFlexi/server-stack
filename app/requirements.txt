@@ -13,4 +13,5 @@ influxdb-client
 ipython
 debugpy
 requests
+geopy
 
