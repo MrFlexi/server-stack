@@ -2,6 +2,7 @@ pillow==6.2.1
 redis
 eventlet
 flask
+flask_restful
 Flask-PyMongo
 flask-mongoengine
 Flask-APScheduler
@@ -14,4 +15,12 @@ ipython
 debugpy
 requests
 geopy
+pydantic
+flask_restful_swagger
+flask_restful_swagger_3
+fastapi
+psycopg2-binary
+sqlmodel
+uvicorn
+python-multipart
 

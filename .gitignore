@@ -1,0 +1,7 @@
+app/FlaskApp/venv/*
+*__pycache__*
+data/mongodb*
+data/pgadmin/sessions/*
+data/postgres*
+data/pgadmin*
+data/redis*

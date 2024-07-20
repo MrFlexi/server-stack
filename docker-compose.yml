@@ -1,10 +1,10 @@
-version: '3'
+version: '3.8'
 services:
   flask:
     build:
       context: app
       dockerfile: Dockerfile
-    container_name: flask
+    container_name: server-stack
     restart: unless-stopped
     volumes:
       - ./app:/var/www
@@ -17,47 +17,46 @@ services:
       MONGODB_USERNAME: mrflexi_root
       MONGODB_PASSWORD: nc:13Arequipa
       MONGODB_HOSTNAME: mongodb
-    networks:
-      - backend
-    expose:
-      - 5000
+    #networks:
+    #  - backend
     ports:
-      - 5000:5000
-    
-  redis:
-    image: "redis:alpine"
-    container_name: redisdb
-    restart: unless-stopped
-    networks:
-      - backend
-    volumes:
-      - mydata:/data/db 
+      - 41851:5000
+      - 41860:8000
+
 
   mongodb:
-    image: mongo:4.0.8
+    image: mongo:4.4.18
     container_name: mongodb
     restart: unless-stopped
-    command: mongod --auth
+    #command: mongod --auth
     environment:
-      MONGO_INITDB_ROOT_USERNAME: mrflexi_root
-      MONGO_INITDB_ROOT_PASSWORD: nc:13Arequipa
-      MONGO_INITDB_DATABASE: geonames
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
       MONGODB_DATA_DIR: /data/db
       MONDODB_LOG_DIR: /dev/null
     volumes:
-     - mydata:/data/db     
-    networks:
-      - backend
+     - ./data/mongodb:/data/db     
+    #networks:
+    #  - backend
     ports:
-      - 27017:27017
+      - :27017
 
-volumes:
-  mydata:
-    driver: local
-    driver_opts:
-      o: bind
-      type: none
-      device: /home/pi/projects/storage    #hier werden die Daten persistent abgelegt
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo-express
+    restart: unless-stopped
+    environment:
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin
+      ME_CONFIG_MONGODB_URL: mongodb://admin:admin@mongodb:27017/
+    ports:
+      - "41852:8081"
+    depends_on:
+      mongodb:
+        condition: service_started
+    
+ 
 networks:
-  backend:
-     driver: bridge
+    default:
+      external: true       
+      name: flask_server_backend
