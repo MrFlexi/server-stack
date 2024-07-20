@@ -1,13 +1,16 @@
 #!/usr/bin/env python
 
-from flask import Flask, current_app
+from flask import Flask, render_template, request, session
 from flask_cors import CORS
 from flask_restful_swagger_3 import swagger, get_swagger_blueprint
 from flask_pymongo import PyMongo
+from flask_socketio import SocketIO, emit, join_room, leave_room, close_room, rooms, disconnect
 from blueprints import get_user_resources
 
+async_mode = None
 app = Flask(__name__)
 CORS(app, resources={"/api/*": {"origins": "*"}})
+socketio = SocketIO(app, async_mode=async_mode, cors_allowed_origins="*")
 
 def auth(api_key, endpoint, method):
     # Space for your fancy authentication. Return True if access is granted, otherwise False
@@ -39,5 +42,26 @@ swagger_blueprint = get_swagger_blueprint(
 app.register_blueprint(swagger_blueprint)
 
 
+@app.route('/ui5')
+def UI5():
+    return render_template('index.html')
+
+#-----------------------------------------------------------------------------------------------
+#   Socket IO
+#-----------------------------------------------------------------------------------------------
+@socketio.on('connect', namespace='')
+def onConnect():
+    print()
+    print("------------------------------------------------------------------")
+    print ("Socket IO Client connected :Session ID: " + str( request.sid ))
+    print("------------------------------------------------------------------")
+    
+@socketio.on('disconnect', namespace='')
+def onDiscconnect():
+    print ("Client disconnected: " + str( request.sid ))
+   
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    debug = True
+    socketio.run(app, host='0.0.0.0', debug=debug)
+    #app.run(debug=True, host='0.0.0.0')

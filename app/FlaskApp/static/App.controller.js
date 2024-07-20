@@ -18,7 +18,7 @@ sap.ui.define([
 		this.getView().setModel(oModelMenu);
 
 
-		// oModelDevices.loadData("http://api.szaroletta.de/device_list");
+		oModelDevices.loadData("http://localhost:41851/api/users");
 		this.getView().setModel(oModelDevices,"oModelDevices");	
 		
 		

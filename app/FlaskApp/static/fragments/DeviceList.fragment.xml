@@ -16,7 +16,7 @@
 				ariaLabelledBy="title">
 				<extension>
 					<m:OverflowToolbar style="Clear">
-						<m:Title id="title" text="Lora Devices"/>
+						<m:Title id="title" text="User List"/>
 						<m:ToolbarSpacer/>
 						<m:ToggleButton
 							icon="sap-icon://complete"
@@ -45,7 +45,7 @@
 						filterProperty="Device_id">
 						<m:Label text="ID" />
 						<template>
-							<m:Text text="{oModelDevices>device_id}" wrapping="false" />
+							<m:Text text="{oModelDevices>id}" wrapping="false" />
 						</template>
 					</Column>
 					<Column
@@ -58,15 +58,15 @@
 						</template>
 					</Column>
 					<Column
-						id="sleep_time"
-						width="9rem"
+						id="Mail"
+						width="20rem"
 						filterProperty="sleep_time"
 						showFilterMenuEntry="false"
 						defaultFilterOperator="EQ"
 						filterType="sap.ui.model.type.Boolean">
-						<m:Label text="SleepTime" />
+						<m:Label text="Mail" />
 						<template>
-							<m:Input value="{oModelDevices>sleep_time}"/>
+							<m:Input value="{oModelDevices>mail}"/>
 						</template>
 						
 					</Column>
