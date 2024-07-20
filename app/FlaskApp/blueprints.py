@@ -59,31 +59,13 @@ class UserResource(Resource):
         print("Get all users")
         """
         users_cursor = db.users.find()
-        user_list = [UserModel(**{**user, '_id': str(user['_id'])}) for user in users_cursor]
+        #user_list = [UserModel(**{**user, '_id': str(user['_id'])}) for user in users_cursor]
+        
+        # delete key field "_id" from MongoDB
+        user_list = [ UserModel(**{k: v for k, v in user.items() if k != '_id'}) for user in users_cursor]
+        
         print(user_list)
-        
-        # Convert the documents to User model instances
-        #for user in users_cursor:
-        #    user['_id'] = str(user['_id'])
-        #    print(user)
-        #    userM = UserModel(**user)
-            
-            
-            
-        
-        #usersInstances = [UserModel(**user) for user in users_cursor]
-        #print("UserInstances", usersInstances)
-        #for user in usersInstances:
-        #    print(user)
-  
-        
-        #for u in users:
-        #    z = UserModel(**u) 
-        #    print("Z", z.schema())
 
-        # Return data through schema model
-        # return list(map(lambda user: UserModel(**users), users)), 200
-        # return "success"
         
         return user_list, 200
 

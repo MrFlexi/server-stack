@@ -18,9 +18,7 @@ class KeysModel(Schema):
 class SuperUserModel(Schema):
     type = 'object'
     properties = {
-        '_id': {
-            'type': 'string'
-        },
+       
         'id': {
             'type': 'integer',
             'format': 'int64',
