@@ -58,15 +58,11 @@ class UserResource(Resource):
         """
         print("Get all users")
         """
-        users_cursor = db.users.find()
-        #user_list = [UserModel(**{**user, '_id': str(user['_id'])}) for user in users_cursor]
-        
-        # delete key field "_id" from MongoDB
-        user_list = [ UserModel(**{k: v for k, v in user.items() if k != '_id'}) for user in users_cursor]
-        
+        # Finde alle Benutzer, ohne das _id-Feld zurückzugeben
+        users_cursor = db.users.find({}, {'_id': 0})
+        user_list = [UserModel(**user) for user in users_cursor]
         print(user_list)
 
-        
         return user_list, 200
 
 
