@@ -1,5 +1,16 @@
 #!/usr/bin/env python
 
+# Create a virtual environment 
+# python -m venv venv
+
+# Activate the virtual environment
+
+# Windows
+# venv\Scripts\activate
+# Linux
+# source venv/bin/activate
+# pip freeze > requirements.txt
+
 from flask import Flask, render_template, request, session
 from flask_cors import CORS
 from flask_restful_swagger_3 import swagger, get_swagger_blueprint
@@ -45,6 +56,7 @@ app.register_blueprint(swagger_blueprint)
 @app.route('/ui5')
 def UI5():
     return render_template('index.html')
+
 
 #-----------------------------------------------------------------------------------------------
 #   Socket IO

@@ -5,3 +5,5 @@ data/pgadmin/sessions/*
 data/postgres*
 data/pgadmin*
 data/redis*
+/venv*
+venv/
