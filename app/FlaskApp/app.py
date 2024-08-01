@@ -17,6 +17,8 @@ from flask_restful_swagger_3 import swagger, get_swagger_blueprint
 from flask_pymongo import PyMongo
 from flask_socketio import SocketIO, emit, join_room, leave_room, close_room, rooms, disconnect
 from blueprints import get_user_resources
+from ultralytics import YOLO
+
 
 async_mode = None
 app = Flask(__name__)
